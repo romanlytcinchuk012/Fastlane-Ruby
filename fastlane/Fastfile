@@ -1,0 +1,207 @@
+# load variables from .env file in the root if it exists
+if File.exist?('../.env')
+  open('../.env', 'r').readlines.each do |l|
+    kv = l.split('=')
+    ENV[kv[0]] = kv[1].chomp
+  end
+end
+
+lane :test_autocreation do
+  # app should be autocreated if not found
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication-notfound-2",
+    file: "./fastlane/app-release.apk"
+  )
+
+  # app should be created for "fastlane-test-org" organization
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_type: "organization",
+    owner_name: "fastlane-test-org",
+    app_os: 'Android',
+    app_platform: 'Java',
+    app_name: "MyApplication-notfound-3",
+    file: "./fastlane/app-release.apk"
+  )
+end
+
+lane :test_macos do
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["APPCENTER_OWNER_NAME"],
+    app_name: ENV["APPCENTER_MACOS_APP_NAME"],
+    app_os: 'MacOS',
+    file: "./fastlane/macos-app.app.zip"
+  )
+end
+
+lane :test_macos_sparkle do
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["APPCENTER_OWNER_NAME"],
+    app_name: ENV["APPCENTER_MACOS_APP_NAME"],
+    destinations: ENV["TEST_APPCENTER_DISTRIBUTE_GROUP"],
+    destination_type: "group",
+    app_os: 'MacOS',
+    file: "./fastlane/macos-app.app.zip",
+    dsa_signature: "test_dsa_signature_value"
+  )
+end
+
+lane :test_autocreation_without_prompts do
+  # app should be autocreated if not found, without asking user
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "my-new-app-center-app",
+    app_display_name: "My New App Center App",
+    app_os: "Android",
+    app_platform: "Java",
+    file: "./fastlane/app-release.apk"
+  )
+end
+
+lane :test_release_notes do
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication-01",
+    file: "./fastlane/app-release.ipa",
+    destinations: ENV["TEST_APPCENTER_DISTRIBUTE_GROUP"],
+    destination_type: "group",
+    release_notes: sh("cat ./test_CHANGELOG.md"),
+    should_clip: false,
+    release_notes_link: "https://raw.githubusercontent.com/Microsoft/fastlane-plugin-appcenter/master/README.md"
+  )
+end
+
+lane :test_group_names do
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk",
+    destinations: "Group%20with%20space",
+    destination_type: "group"
+  )
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk",
+    destinations: "Group with space",
+    destination_type: "group"
+  )
+end
+
+lane :test do
+  # appcenter_upload will read release_notes from FL_CHANGELOG
+  Actions.lane_context[SharedValues::FL_CHANGELOG] = 'shared changelog'
+
+  UI.message("\n\n\n=====================================\n uploading android\n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk"
+  )
+
+  UI.message("\n\n\n=====================================\n uploading ios with dSYM files (not zipped) \n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication-01",
+    file: "./fastlane/app-release.ipa",
+    destinations: ENV["TEST_APPCENTER_DISTRIBUTE_GROUP"],
+    destination_type: "group",
+    release_notes: ENV["TEST_APPCENTER_DISTRIBUTE_RELEASE_NOTES"]
+  )
+
+  UI.message("\n\n\n=====================================\n uploading only dSYM files (not zipped) \n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication-01",
+    upload_dsym_only: true,
+    dsym: "./fastlane/Themoji.dSYM",
+    release_notes: ENV["TEST_APPCENTER_DISTRIBUTE_RELEASE_NOTES"]
+  )
+
+  UI.message("\n\n\n=====================================\n uploading to multiple groups \n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk",
+    destinations: ENV["TEST_APPCENTER_DISTRIBUTE_GROUPS"],
+    destination_type: "group"
+  )
+
+  UI.message("\n\n\n=====================================\n uploading to store \n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk",
+    destinations: ENV["TEST_APPCENTER_DISTRIBUTE_STORE"],
+    destination_type: "store"
+  )
+
+  UI.message("\n\n\n=====================================\n uploading mandatory release \n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk",
+    destinations: ENV["TEST_APPCENTER_DISTRIBUTE_GROUP"],
+    destination_type: "group",
+    mandatory_update: true
+  )
+
+  UI.message("\n\n\n=====================================\n uploading release with email notification \n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk",
+    destinations: ENV["TEST_APPCENTER_DISTRIBUTE_GROUP"],
+    destination_type: "group",
+    notify_testers: true
+  )
+
+  UI.message("\n\n\n=====================================\n uploading only proguard mapping.txt \n=====================================")
+
+  appcenter_upload(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication",
+    file: "./fastlane/app-release.apk",
+    upload_mapping_only: true,
+    build_number: "3",
+    version: "1.0.0",
+    mapping: "./fastlane/mapping.txt",
+    notify_testers: false
+  )
+end
+
+lane :test_fetch_version_number do
+  UI.message("\n\n\n=====================================\n Fetch latest version: \n=====================================")
+
+  version = appcenter_fetch_version_number(
+    api_token: ENV["TEST_APPCENTER_API_TOKEN"],
+    owner_name: ENV["TEST_APPCENTER_OWNER_NAME"],
+    app_name: "MyApplication"
+  )
+
+  UI.message(version.to_s)
+end
